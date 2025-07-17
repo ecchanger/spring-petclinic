@@ -21,8 +21,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Locale;
 import java.util.Set;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.samples.petclinic.owner.Owner;
+import org.springframework.samples.petclinic.owner.Visit;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import jakarta.validation.ConstraintViolation;
@@ -34,6 +37,14 @@ import jakarta.validation.Validator;
  */
 class ValidatorTests {
 
+	private Validator validator;
+
+	@BeforeEach
+	void setUp() {
+		LocaleContextHolder.setLocale(Locale.ENGLISH);
+		validator = createValidator();
+	}
+
 	private Validator createValidator() {
 		LocalValidatorFactoryBean localValidatorFactoryBean = new LocalValidatorFactoryBean();
 		localValidatorFactoryBean.afterPropertiesSet();
@@ -42,19 +53,195 @@ class ValidatorTests {
 
 	@Test
 	void shouldNotValidateWhenFirstNameEmpty() {
-
-		LocaleContextHolder.setLocale(Locale.ENGLISH);
-		Person person = new Person();
+		Person person = new TestPerson();
 		person.setFirstName("");
 		person.setLastName("smith");
 
-		Validator validator = createValidator();
 		Set<ConstraintViolation<Person>> constraintViolations = validator.validate(person);
 
 		assertThat(constraintViolations).hasSize(1);
 		ConstraintViolation<Person> violation = constraintViolations.iterator().next();
 		assertThat(violation.getPropertyPath()).hasToString("firstName");
 		assertThat(violation.getMessage()).isEqualTo("must not be blank");
+	}
+
+	@Test
+	void shouldNotValidateWhenLastNameEmpty() {
+		Person person = new TestPerson();
+		person.setFirstName("John");
+		person.setLastName("");
+
+		Set<ConstraintViolation<Person>> constraintViolations = validator.validate(person);
+
+		assertThat(constraintViolations).hasSize(1);
+		ConstraintViolation<Person> violation = constraintViolations.iterator().next();
+		assertThat(violation.getPropertyPath()).hasToString("lastName");
+		assertThat(violation.getMessage()).isEqualTo("must not be blank");
+	}
+
+	@Test
+	void shouldNotValidateWhenFirstAndLastNameEmpty() {
+		Person person = new TestPerson();
+		person.setFirstName("");
+		person.setLastName("");
+
+		Set<ConstraintViolation<Person>> constraintViolations = validator.validate(person);
+
+		assertThat(constraintViolations).hasSize(2);
+	}
+
+	@Test
+	void shouldValidateWhenFirstAndLastNameNotEmpty() {
+		Person person = new TestPerson();
+		person.setFirstName("John");
+		person.setLastName("Smith");
+
+		Set<ConstraintViolation<Person>> constraintViolations = validator.validate(person);
+
+		assertThat(constraintViolations).isEmpty();
+	}
+
+	@Test
+	void shouldNotValidateOwnerWhenAddressEmpty() {
+		Owner owner = new Owner();
+		owner.setFirstName("John");
+		owner.setLastName("Smith");
+		owner.setAddress("");
+		owner.setCity("Springfield");
+		owner.setTelephone("1234567890");
+
+		Set<ConstraintViolation<Owner>> constraintViolations = validator.validate(owner);
+
+		assertThat(constraintViolations).hasSize(1);
+		ConstraintViolation<Owner> violation = constraintViolations.iterator().next();
+		assertThat(violation.getPropertyPath()).hasToString("address");
+		assertThat(violation.getMessage()).isEqualTo("must not be blank");
+	}
+
+	@Test
+	void shouldNotValidateOwnerWhenCityEmpty() {
+		Owner owner = new Owner();
+		owner.setFirstName("John");
+		owner.setLastName("Smith");
+		owner.setAddress("123 Main St");
+		owner.setCity("");
+		owner.setTelephone("1234567890");
+
+		Set<ConstraintViolation<Owner>> constraintViolations = validator.validate(owner);
+
+		assertThat(constraintViolations).hasSize(1);
+		ConstraintViolation<Owner> violation = constraintViolations.iterator().next();
+		assertThat(violation.getPropertyPath()).hasToString("city");
+		assertThat(violation.getMessage()).isEqualTo("must not be blank");
+	}
+
+	@Test
+	void shouldNotValidateOwnerWhenTelephoneEmpty() {
+		Owner owner = new Owner();
+		owner.setFirstName("John");
+		owner.setLastName("Smith");
+		owner.setAddress("123 Main St");
+		owner.setCity("Springfield");
+		owner.setTelephone("");
+
+		Set<ConstraintViolation<Owner>> constraintViolations = validator.validate(owner);
+
+		assertThat(constraintViolations).hasSize(2);
+		// When telephone is empty, it violates both @NotBlank and @Pattern constraints
+		assertThat(constraintViolations).extracting("propertyPath")
+			.allMatch(path -> path.toString().equals("telephone"));
+	}
+
+	@Test
+	void shouldNotValidateOwnerWhenTelephoneInvalid() {
+		Owner owner = new Owner();
+		owner.setFirstName("John");
+		owner.setLastName("Smith");
+		owner.setAddress("123 Main St");
+		owner.setCity("Springfield");
+		owner.setTelephone("123-456-7890");
+
+		Set<ConstraintViolation<Owner>> constraintViolations = validator.validate(owner);
+
+		assertThat(constraintViolations).hasSize(1);
+		ConstraintViolation<Owner> violation = constraintViolations.iterator().next();
+		assertThat(violation.getPropertyPath()).hasToString("telephone");
+	}
+
+	@Test
+	void shouldNotValidateOwnerWhenTelephoneTooShort() {
+		Owner owner = new Owner();
+		owner.setFirstName("John");
+		owner.setLastName("Smith");
+		owner.setAddress("123 Main St");
+		owner.setCity("Springfield");
+		owner.setTelephone("123456789");
+
+		Set<ConstraintViolation<Owner>> constraintViolations = validator.validate(owner);
+
+		assertThat(constraintViolations).hasSize(1);
+		ConstraintViolation<Owner> violation = constraintViolations.iterator().next();
+		assertThat(violation.getPropertyPath()).hasToString("telephone");
+	}
+
+	@Test
+	void shouldNotValidateOwnerWhenTelephoneTooLong() {
+		Owner owner = new Owner();
+		owner.setFirstName("John");
+		owner.setLastName("Smith");
+		owner.setAddress("123 Main St");
+		owner.setCity("Springfield");
+		owner.setTelephone("12345678901");
+
+		Set<ConstraintViolation<Owner>> constraintViolations = validator.validate(owner);
+
+		assertThat(constraintViolations).hasSize(1);
+		ConstraintViolation<Owner> violation = constraintViolations.iterator().next();
+		assertThat(violation.getPropertyPath()).hasToString("telephone");
+	}
+
+	@Test
+	void shouldValidateOwnerWhenAllFieldsValid() {
+		Owner owner = new Owner();
+		owner.setFirstName("John");
+		owner.setLastName("Smith");
+		owner.setAddress("123 Main St");
+		owner.setCity("Springfield");
+		owner.setTelephone("1234567890");
+
+		Set<ConstraintViolation<Owner>> constraintViolations = validator.validate(owner);
+
+		assertThat(constraintViolations).isEmpty();
+	}
+
+	@Test
+	void shouldNotValidateVisitWhenDescriptionEmpty() {
+		Visit visit = new Visit();
+		visit.setDescription("");
+
+		Set<ConstraintViolation<Visit>> constraintViolations = validator.validate(visit);
+
+		assertThat(constraintViolations).hasSize(1);
+		ConstraintViolation<Visit> violation = constraintViolations.iterator().next();
+		assertThat(violation.getPropertyPath()).hasToString("description");
+		assertThat(violation.getMessage()).isEqualTo("must not be blank");
+	}
+
+	@Test
+	void shouldValidateVisitWhenDescriptionNotEmpty() {
+		Visit visit = new Visit();
+		visit.setDescription("Regular checkup");
+
+		Set<ConstraintViolation<Visit>> constraintViolations = validator.validate(visit);
+
+		assertThat(constraintViolations).isEmpty();
+	}
+
+	// Concrete test implementation of Person
+	private static class TestPerson extends Person {
+
+		// No additional implementation needed for testing
+
 	}
 
 }

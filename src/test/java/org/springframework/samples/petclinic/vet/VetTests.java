@@ -15,15 +15,25 @@
  */
 package org.springframework.samples.petclinic.vet;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.util.SerializationUtils;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * @author Dave Syer
+ * Unit tests for Vet
  */
 class VetTests {
+
+	private Vet vet;
+
+	@BeforeEach
+	void setUp() {
+		vet = new Vet();
+	}
 
 	@Test
 	void testSerialization() {
@@ -36,6 +46,115 @@ class VetTests {
 		assertThat(other.getFirstName()).isEqualTo(vet.getFirstName());
 		assertThat(other.getLastName()).isEqualTo(vet.getLastName());
 		assertThat(other.getId()).isEqualTo(vet.getId());
+	}
+
+	@Test
+	void testInheritanceFromPerson() {
+		vet.setId(123);
+		vet.setFirstName("John");
+		vet.setLastName("Doe");
+
+		assertThat(vet.getId()).isEqualTo(123);
+		assertThat(vet.getFirstName()).isEqualTo("John");
+		assertThat(vet.getLastName()).isEqualTo("Doe");
+		assertThat(vet.isNew()).isFalse();
+	}
+
+	@Test
+	void testGetSpecialtiesReturnsEmptyList() {
+		List<Specialty> specialties = vet.getSpecialties();
+		assertThat(specialties).isEmpty();
+	}
+
+	@Test
+	void testAddSpecialty() {
+		Specialty specialty = new Specialty();
+		specialty.setName("Surgery");
+
+		vet.addSpecialty(specialty);
+
+		assertThat(vet.getSpecialties()).hasSize(1);
+		assertThat(vet.getSpecialties().get(0)).isEqualTo(specialty);
+	}
+
+	@Test
+	void testAddMultipleSpecialties() {
+		Specialty surgery = new Specialty();
+		surgery.setName("Surgery");
+
+		Specialty dentistry = new Specialty();
+		dentistry.setName("Dentistry");
+
+		vet.addSpecialty(surgery);
+		vet.addSpecialty(dentistry);
+
+		assertThat(vet.getSpecialties()).hasSize(2);
+		assertThat(vet.getSpecialties()).contains(surgery, dentistry);
+	}
+
+	@Test
+	void testGetSpecialtiesAreSorted() {
+		Specialty surgery = new Specialty();
+		surgery.setName("Surgery");
+
+		Specialty dentistry = new Specialty();
+		dentistry.setName("Dentistry");
+
+		Specialty radiology = new Specialty();
+		radiology.setName("Radiology");
+
+		// Add in non-alphabetical order
+		vet.addSpecialty(surgery);
+		vet.addSpecialty(dentistry);
+		vet.addSpecialty(radiology);
+
+		List<Specialty> specialties = vet.getSpecialties();
+
+		assertThat(specialties).hasSize(3);
+		assertThat(specialties.get(0).getName()).isEqualTo("Dentistry");
+		assertThat(specialties.get(1).getName()).isEqualTo("Radiology");
+		assertThat(specialties.get(2).getName()).isEqualTo("Surgery");
+	}
+
+	@Test
+	void testGetNrOfSpecialtiesWithNoSpecialties() {
+		assertThat(vet.getNrOfSpecialties()).isEqualTo(0);
+	}
+
+	@Test
+	void testGetNrOfSpecialtiesWithOneSpecialty() {
+		Specialty specialty = new Specialty();
+		specialty.setName("Surgery");
+		vet.addSpecialty(specialty);
+
+		assertThat(vet.getNrOfSpecialties()).isEqualTo(1);
+	}
+
+	@Test
+	void testGetNrOfSpecialtiesWithMultipleSpecialties() {
+		Specialty surgery = new Specialty();
+		surgery.setName("Surgery");
+
+		Specialty dentistry = new Specialty();
+		dentistry.setName("Dentistry");
+
+		vet.addSpecialty(surgery);
+		vet.addSpecialty(dentistry);
+
+		assertThat(vet.getNrOfSpecialties()).isEqualTo(2);
+	}
+
+	@Test
+	void testAddDuplicateSpecialty() {
+		Specialty surgery = new Specialty();
+		surgery.setName("Surgery");
+
+		vet.addSpecialty(surgery);
+		vet.addSpecialty(surgery);
+
+		// Sets don't allow duplicates
+		assertThat(vet.getNrOfSpecialties()).isEqualTo(1);
+		assertThat(vet.getSpecialties()).hasSize(1);
 	}
 
 }
